@@ -1,63 +1,16 @@
-variables:
-  IMAGE: readMavenPom().getArtifactId()
-  VERSION: readMavenPom().getVersion()
-default:
+version:
+  stage: init
+  image: alpine:latest
+  script:
+    - whoami
   tags:
     - docker
-  timeout: 1 hours
-stages:
-  - Build
-  - null
-  - Quality_Analysis
-  - Build_and_Publish_Image
-  - .post
-Build:
-  stage: Build
-  image:
-    name: maven:3.5.0-jdk-8
+ 
+build:
+  stage: build
   script:
-    - sh 'mvn clean findbugs:findbugs package'
-Build:success:
-  stage: Build
-  needs:
-    - job: Build
-  script:
-    - "archiveArtifacts(artifacts: '**/target/*.jar', allowEmptyArchive: true)"
-  when: on_success
-".Quality_Analysis": {}
-Integration_Test:
-  stage: Quality_Analysis
-  extends:
-    - .Quality_Analysis
-  script:
-    - echo 'Run integration tests here...'
+    - docker-compose -f docker/test.yml up -d
+    - mvn clean deploy
+    - docker-compose -f docker/test.yml down
   tags:
-    - any  //run this stage on any available agent
-Sonar_Scan:
-  stage: Quality_Analysis
-  extends:
-    - .Quality_Analysis
-  image:
-    name: maven:3.5.0-jdk-8
-  variables:
-    SONAR: credentials('sonar')
-  script:
-    - sh 'mvn sonar:sonar -Dsonar.login=$SONAR_PSW'
-Build_and_Publish_Image:
-  stage: Build_and_Publish_Image
-  script:
-    - sh """
-    - "docker build -t ${IMAGE} ."
-    - "docker tag ${IMAGE} ${IMAGE}:${VERSION}"
-    - "docker push ${IMAGE}:${VERSION}"
-    - '"""'
-  only:
-    refs:
-      - master
-post_pipeline:failure:
-  stage: .post
-  script:
-    - "mail to: 'team@example.com',"
-    - "subject: \"Failed Pipeline: ${currentBuild.fullDisplayName}\","
-    - "body: \"Something is wrong with ${env.BUILD_URL}\""
-  when: on_failure
+    - shell

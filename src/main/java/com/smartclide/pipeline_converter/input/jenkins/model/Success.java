@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder()
 @NoArgsConstructor
 @AllArgsConstructor
-public class Success {
-	private List<String> scripts;
+public class Success {	
+	private List<String> archiveArtifacts;
 }

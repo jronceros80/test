@@ -21,5 +21,7 @@ public class Stage {
 	private Post post;
 	private List<Stage> stages;
 	private List<Stage> parallel;
+	private List<String> tags;
+	private List<String> dependencies;
 //	matrix not yet supported
 }
