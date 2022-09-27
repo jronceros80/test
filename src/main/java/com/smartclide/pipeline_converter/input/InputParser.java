@@ -18,7 +18,6 @@ import com.smartclide.pipeline_converter.input.gitlab.model.DockerImage;
 import com.smartclide.pipeline_converter.input.gitlab.model.Job;
 import com.smartclide.pipeline_converter.input.gitlab.model.Pipeline;
 import com.smartclide.pipeline_converter.input.jenkins.model.Agent;
-import com.smartclide.pipeline_converter.input.jenkins.model.Agent.AgentType;
 import com.smartclide.pipeline_converter.input.jenkins.model.Docker;
 import com.smartclide.pipeline_converter.input.jenkins.model.Options;
 import com.smartclide.pipeline_converter.input.jenkins.model.Post;
@@ -28,7 +27,8 @@ import com.smartclide.pipeline_converter.input.jenkins.model.When;
 
 public class InputParser {
 	public static final String SUCCESS = "success";
-
+	public static final String ARTIFACT = "archiveArtifacts artifacts:";
+	
 	public static void main(String[] args) {
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
 		ObjectMapper mapper2 = new ObjectMapper();
@@ -97,9 +97,9 @@ public class InputParser {
 		return Stage.builder()
 				.name(key)
 				.agent(parseAgentJob(job))				
-				.environment(job.getVariables())				
-				.when(parseWhen(job))
+				.environment(job.getVariables())
 				.steps(parseSteps(job))
+				.when(parseWhen(job))				
 				.post(parsePostJob(key, job))
 				.build();
 	}
@@ -121,20 +121,19 @@ public class InputParser {
 	}
 
 	private static Agent parseAgentJob(Job job) {
-		Agent agent = new Agent();
-		agent.setAgentType(null);		
+		Agent agent = new Agent();			
 		Docker docker = null;
+		agent.setAgentType(null);
 		if (job.getImage() != null) {			
 			docker = parseDocker(job.getImage());
 		}
-		if (job.getServices() != null && !job.getServices().isEmpty()) {			
-			docker = parseDocker(job.getServices().get(0));
-		} 
-		if(job.getImage() == null && job.getTags() != null && !job.getTags().isEmpty()) {
+		// Si tiene image no hace falta añadir el label al agente, solo se añade en caso de q no exista el image
+		if(job.getImage() == null && job.getTags() != null && !job.getTags().isEmpty()) {				
 			agent.setLabel(job.getTags());				
 		}
+		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
 		if(agent.getDocker()== null && agent.getAgentType()==null 
-				&& agent.getLabel() !=null && agent.getLabel().isEmpty()) {
+				&& (agent.getLabel() == null || agent.getLabel().isEmpty())) {
 			return null;
 		}
 		agent.setDocker(docker);
@@ -148,18 +147,26 @@ public class InputParser {
 	private static Post parsePostJob(String keyParent, Job job) {
 		List<String> artifacts = new ArrayList<>();
 		List<String> afterScript = new ArrayList<>();
-		Post post = new Post();			
-		if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null  
-				&& !job.getArtifacts().getPaths().isEmpty()) {	
-			artifacts = job.getArtifacts().getPaths();
-			post.setAlways(artifacts);						
-		}
+		List<String> concatenated = new ArrayList<>();
+		Post post = new Post();					
 		
 		if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {
 			afterScript = job.getAfterScript();
-			post.setAlways(afterScript);						
+			concatenated.addAll(afterScript);			
+		}			
+		
+		if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null  
+				&& !job.getArtifacts().getPaths().isEmpty()) {	
+			// TODO: revisar tratamiento de artifact
+			String artifact = ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
+			artifacts.add(artifact);			
+			concatenated.addAll(artifacts);						
 		}
-		if(post.getAlways()==null && post.getSuccess()==null) {
+		
+		post.setAlways(concatenated);
+		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
+		if((post.getAlways()==null || post.getAlways().isEmpty()) && (
+				post.getSuccess()==null || post.getSuccess().isEmpty())) {
 			return null;
 		}
 		return post;
@@ -175,6 +182,7 @@ public class InputParser {
 				post.setAlways(job.getScript());					
 			}		
 	    });	
+		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
 		if(post.getAlways()==null) {
 			return null;
 		}
@@ -185,6 +193,8 @@ public class InputParser {
 		if (pipeline.get_default() != null) {
 			final Retry retry = parseRetry(pipeline.get_default());
 			final String timeout = pipeline.get_default().getTimeout();
+			
+			//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
 			if (retry == null && timeout == null) {
 				return null;
 			}
@@ -218,7 +228,7 @@ public class InputParser {
 		if(job.getExcept()!=null) {
 			when.setNot(job.getExcept().getRefs());		
 		}
-		
+		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
 		if(when.getBranch()==null && when.getEnvironmentName()== null 
 				&& when.getExpression()== null && when.getNot() == null) {
 			return null;
