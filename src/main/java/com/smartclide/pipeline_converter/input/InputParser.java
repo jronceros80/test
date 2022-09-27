@@ -36,7 +36,7 @@ public class InputParser {
 		mapper2.setSerializationInclusion(Include.NON_NULL);
 		mapper2.setSerializationInclusion(Include.NON_EMPTY);
 		try {
-			Pipeline cfg = mapper.readValue(new File("target/classes/test5.yaml"), Pipeline.class);
+			Pipeline cfg = mapper.readValue(new File("target/classes/test3.yaml"), Pipeline.class);
 			System.out.println(mapper2.writeValueAsString(cfg));
 //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
 			mapper.setSerializationInclusion(Include.NON_NULL);
@@ -89,6 +89,7 @@ public class InputParser {
 			}
 		});
 		
+	
 		return stages;
 	}
 	
@@ -123,18 +124,17 @@ public class InputParser {
 		Agent agent = new Agent();
 		agent.setAgentType(null);		
 		Docker docker = null;
-		if (job.getImage() != null) {
-			agent.setAgentType(AgentType.OTHER);
+		if (job.getImage() != null) {			
 			docker = parseDocker(job.getImage());
 		}
 		if (job.getServices() != null && !job.getServices().isEmpty()) {			
 			docker = parseDocker(job.getServices().get(0));
 		} 
-		if(job.getTags() != null && !job.getTags().isEmpty()) {
-			agent.setLabel(job.getTags());
-			agent.setAgentType(AgentType.OTHER);		
+		if(job.getImage() == null && job.getTags() != null && !job.getTags().isEmpty()) {
+			agent.setLabel(job.getTags());				
 		}
-		if(agent.getDocker()== null && agent.getAgentType()==null) {
+		if(agent.getDocker()== null && agent.getAgentType()==null 
+				&& agent.getLabel() !=null && agent.getLabel().isEmpty()) {
 			return null;
 		}
 		agent.setDocker(docker);
@@ -145,32 +145,37 @@ public class InputParser {
 		return Docker.builder().image(image.getName()).args(image.getEntryPoint()).build();
 	}
 
-	private static Post parsePostJob(String keyParent, Job job) {										
+	private static Post parsePostJob(String keyParent, Job job) {
+		List<String> artifacts = new ArrayList<>();
+		List<String> afterScript = new ArrayList<>();
 		Post post = new Post();			
-		if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null) {							
-			post.setAlways(job.getArtifacts().getPaths());						
+		if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null  
+				&& !job.getArtifacts().getPaths().isEmpty()) {	
+			artifacts = job.getArtifacts().getPaths();
+			post.setAlways(artifacts);						
 		}
 		
-		if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {				
-			post.setAlways(job.getAfterScript());						
+		if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {
+			afterScript = job.getAfterScript();
+			post.setAlways(afterScript);						
 		}
-		if(post.getAlways()==null) {
+		if(post.getAlways()==null && post.getSuccess()==null) {
 			return null;
 		}
 		return post;
 	}
 	
 
-
+	//post a nivel de pipeline
 	private static Post parsePost(Pipeline pipeline) {
-		Post post = new Post();				
+		Post post = new Post();
+		
 		pipeline.getJobs().forEach((key, job) -> {			
-			if(job.getBeforeScript()!= null && !job.getBeforeScript().isEmpty()) {
-				post.setTools(job.getBeforeScript());			
+			if(job.getStage()!= null && job.getStage().equals(".post")) {
+				post.setAlways(job.getScript());					
 			}		
 	    });	
-		
-		if(post.getTools()==null) {
+		if(post.getAlways()==null) {
 			return null;
 		}
 		return post;
@@ -210,7 +215,12 @@ public class InputParser {
 			  });
 			when.setExpression(expresions);
 		}
-		if(when.getBranch()==null && when.getEnvironmentName()== null && when.getExpression()== null) {
+		if(job.getExcept()!=null) {
+			when.setNot(job.getExcept().getRefs());		
+		}
+		
+		if(when.getBranch()==null && when.getEnvironmentName()== null 
+				&& when.getExpression()== null && when.getNot() == null) {
 			return null;
 		}
 		return when;

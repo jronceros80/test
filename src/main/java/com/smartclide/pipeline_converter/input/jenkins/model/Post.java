@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Post {	
-	private List<String> tools;
+//	private List<String> tools;
 	private List<String> success;	
 	private List<String> always;
 	

@@ -15,4 +15,5 @@ public class When {
 	List<String> expression;
 	List<String> environmentName;
 	List<String> branch;
+	List<String> not;
 }
