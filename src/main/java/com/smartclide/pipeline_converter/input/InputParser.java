@@ -33,8 +33,10 @@ public class InputParser {
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
 		ObjectMapper mapper2 = new ObjectMapper();
 		mapper2.enable(SerializationFeature.INDENT_OUTPUT);
+		mapper2.setSerializationInclusion(Include.NON_NULL);
+		mapper2.setSerializationInclusion(Include.NON_EMPTY);
 		try {
-			Pipeline cfg = mapper.readValue(new File("target/classes/test3.yaml"), Pipeline.class);
+			Pipeline cfg = mapper.readValue(new File("target/classes/test5.yaml"), Pipeline.class);
 			System.out.println(mapper2.writeValueAsString(cfg));
 //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
 			mapper.setSerializationInclusion(Include.NON_NULL);
@@ -119,6 +121,7 @@ public class InputParser {
 
 	private static Agent parseAgentJob(Job job) {
 		Agent agent = new Agent();
+		agent.setAgentType(null);		
 		Docker docker = null;
 		if (job.getImage() != null) {
 			agent.setAgentType(AgentType.OTHER);
@@ -130,6 +133,9 @@ public class InputParser {
 		if(job.getTags() != null && !job.getTags().isEmpty()) {
 			agent.setLabel(job.getTags());
 			agent.setAgentType(AgentType.OTHER);		
+		}
+		if(agent.getDocker()== null && agent.getAgentType()==null) {
+			return null;
 		}
 		agent.setDocker(docker);
 		return agent;
@@ -147,7 +153,10 @@ public class InputParser {
 		
 		if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {				
 			post.setAlways(job.getAfterScript());						
-		}						
+		}
+		if(post.getAlways()==null) {
+			return null;
+		}
 		return post;
 	}
 	
@@ -160,6 +169,10 @@ public class InputParser {
 				post.setTools(job.getBeforeScript());			
 			}		
 	    });	
+		
+		if(post.getTools()==null) {
+			return null;
+		}
 		return post;
 	}
 
