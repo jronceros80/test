@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,214 +25,215 @@ import com.smartclide.pipeline_converter.input.jenkins.model.Stage;
 import com.smartclide.pipeline_converter.input.jenkins.model.When;
 
 public class InputParser {
-	public static final String SUCCESS = "success";
-	public static final String ARTIFACT = "archiveArtifacts artifacts:";
-	
-	public static void main(String[] args) {
-		ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
-		ObjectMapper mapper2 = new ObjectMapper();
-		mapper2.enable(SerializationFeature.INDENT_OUTPUT);
-		mapper2.setSerializationInclusion(Include.NON_NULL);
-		mapper2.setSerializationInclusion(Include.NON_EMPTY);
-		try {
-			Pipeline cfg = mapper.readValue(new File("target/classes/test3.yaml"), Pipeline.class);
-			System.out.println(mapper2.writeValueAsString(cfg));
-//            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
-			mapper.setSerializationInclusion(Include.NON_NULL);
-			mapper.setSerializationInclusion(Include.NON_EMPTY);
+  public static final String SUCCESS = "success";
+  public static final String ARTIFACT = "archiveArtifacts artifacts:";
 
-//			System.out.println(mapper.writeValueAsString(cfg));
+  public static void main(String[] args) {
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
+    ObjectMapper mapper2 = new ObjectMapper();
+    mapper2.enable(SerializationFeature.INDENT_OUTPUT);
+    mapper2.setSerializationInclusion(Include.NON_NULL);
+    mapper2.setSerializationInclusion(Include.NON_EMPTY);
+    try {
+      Pipeline cfg = mapper.readValue(new File("target/classes/test3.yaml"), Pipeline.class);
+      System.out.println(mapper2.writeValueAsString(cfg));
+      //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
+      mapper.setSerializationInclusion(Include.NON_NULL);
+      mapper.setSerializationInclusion(Include.NON_EMPTY);
 
-			System.out.println("################################################################################");			
-			System.out.println(mapper2.writeValueAsString(convert(cfg)));			
+      //			System.out.println(mapper.writeValueAsString(cfg));
 
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
+      System.out.println("################################################################################");
+      //System.out.println(mapper2.writeValueAsString(convert(cfg)));
+      System.out.println(convert(cfg));
 
-	public static com.smartclide.pipeline_converter.input.jenkins.model.Pipeline convert(Pipeline gitlabPipeline)
-			throws JsonProcessingException {						
-		var jenkinsPipeline = new com.smartclide.pipeline_converter.input.jenkins.model.Pipeline();
-		if (gitlabPipeline != null && (gitlabPipeline.getJobs() != null && !gitlabPipeline.getJobs().isEmpty())) {
-			jenkinsPipeline.setAgent(parseAgent(gitlabPipeline));
-			jenkinsPipeline.setEnvironment(gitlabPipeline.getVariables());
-			jenkinsPipeline.setPost(parsePost(gitlabPipeline));
-			jenkinsPipeline.setOptions(parseOptions(gitlabPipeline));
-			jenkinsPipeline.setStages(parseStages(gitlabPipeline));						
-		}		
-		return jenkinsPipeline;
-	}
-	
-	private static List<Stage> parseStages(Pipeline pipeline) {		 		
-		var groupedStages = new LinkedHashMap<String, List<Stage>>();		
-		List<Stage> stages = new ArrayList<>();		
-		pipeline.getJobs().forEach((key, job) -> {					
-			Stage stage = parseStage(key, job);
-			groupedStages.merge(job.getStage(), Arrays.asList(stage), (current, newVal) -> {				
-				return Stream.of(current, newVal)
-		                .flatMap(x -> x.stream())
-		                .collect(Collectors.toList());				
-				}
-			);
-		  }
-		);
-		
-		groupedStages.forEach((stage,substages) -> {
-			if(substages.size() > 1) {
-				Stage parent = Stage.builder().name(stage).parallel(substages).build();
-				stages.add(parent);
-			} else {
-				stages.addAll(substages);
-			}
-		});
-		
-	
-		return stages;
-	}
-	
-	private static Stage parseStage(String key, Job job) {		
-		return Stage.builder()
-				.name(key)
-				.agent(parseAgentJob(job))				
-				.environment(job.getVariables())
-				.steps(parseSteps(job))
-				.when(parseWhen(job))				
-				.post(parsePostJob(key, job))
-				.build();
-	}
+    } catch (Exception e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+  }
 
-	private static List<String> parseSteps(Job job) {
-		final List<String> steps = new ArrayList<>();
-		steps.addAll(job.getBeforeScript());
-		steps.addAll(job.getScript());				
-		return steps;
-	}
+  public static com.smartclide.pipeline_converter.input.jenkins.model.Pipeline convert(Pipeline gitlabPipeline)
+      throws JsonProcessingException {
+    var jenkinsPipeline = new com.smartclide.pipeline_converter.input.jenkins.model.Pipeline();
+    if (gitlabPipeline != null && (gitlabPipeline.getJobs() != null && !gitlabPipeline.getJobs().isEmpty())) {
+      jenkinsPipeline.setAgent(parseAgent(gitlabPipeline));
+      jenkinsPipeline.setEnvironment(gitlabPipeline.getVariables());
+      jenkinsPipeline.setPost(parsePost(gitlabPipeline));
+      jenkinsPipeline.setOptions(parseOptions(gitlabPipeline));
+      jenkinsPipeline.setStages(parseStages(gitlabPipeline));
+    }
+    return jenkinsPipeline;
+  }
 
-	private static Agent parseAgent(Pipeline pipeline) {
-		var agentBuilder = Agent.builder();		
-		if (pipeline.getImage() != null) {
-			final Docker docker = parseDocker(pipeline.getImage());
-			agentBuilder.docker(docker);
-		}
-		return agentBuilder.build();
-	}
+  private static List<Stage> parseStages(Pipeline pipeline) {
+    var groupedStages = new LinkedHashMap<String, List<Stage>>();
+    List<Stage> stages = new ArrayList<>();
+    pipeline.getJobs().forEach((key, job) -> {
+      Stage stage = parseStage(key, job);
+      groupedStages.merge(job.getStage(), Arrays.asList(stage), (current, newVal) -> {
+        return Stream.of(current, newVal)
+            .flatMap(x -> x.stream())
+            .collect(Collectors.toList());
+      }
+          );
+    }
+        );
 
-	private static Agent parseAgentJob(Job job) {
-		Agent agent = new Agent();			
-		Docker docker = null;
-		agent.setAgentType(null);
-		if (job.getImage() != null) {			
-			docker = parseDocker(job.getImage());
-		}
-		// Si tiene image no hace falta añadir el label al agente, solo se añade en caso de q no exista el image
-		if(job.getImage() == null && job.getTags() != null && !job.getTags().isEmpty()) {				
-			agent.setLabel(job.getTags());				
-		}
-		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-		if(agent.getDocker()== null && agent.getAgentType()==null 
-				&& (agent.getLabel() == null || agent.getLabel().isEmpty())) {
-			return null;
-		}
-		agent.setDocker(docker);
-		return agent;
-	}
+    groupedStages.forEach((stage,substages) -> {
+      if(substages.size() > 1) {
+        Stage parent = Stage.builder().name(stage).parallel(substages).build();
+        stages.add(parent);
+      } else {
+        stages.addAll(substages);
+      }
+    });
 
-	private static Docker parseDocker(DockerImage image) {
-		return Docker.builder().image(image.getName()).args(image.getEntryPoint()).build();
-	}
 
-	private static Post parsePostJob(String keyParent, Job job) {
-		List<String> artifacts = new ArrayList<>();
-		List<String> afterScript = new ArrayList<>();
-		List<String> concatenated = new ArrayList<>();
-		Post post = new Post();					
-		
-		if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {
-			afterScript = job.getAfterScript();
-			concatenated.addAll(afterScript);			
-		}			
-		
-		if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null  
-				&& !job.getArtifacts().getPaths().isEmpty()) {	
-			// TODO: revisar tratamiento de artifact
-			String artifact = ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
-			artifacts.add(artifact);			
-			concatenated.addAll(artifacts);						
-		}
-		
-		post.setAlways(concatenated);
-		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-		if((post.getAlways()==null || post.getAlways().isEmpty()) && (
-				post.getSuccess()==null || post.getSuccess().isEmpty())) {
-			return null;
-		}
-		return post;
-	}
-	
+    return stages;
+  }
 
-	//post a nivel de pipeline
-	private static Post parsePost(Pipeline pipeline) {
-		Post post = new Post();
-		
-		pipeline.getJobs().forEach((key, job) -> {			
-			if(job.getStage()!= null && job.getStage().equals(".post")) {
-				post.setAlways(job.getScript());					
-			}		
-	    });	
-		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-		if(post.getAlways()==null) {
-			return null;
-		}
-		return post;
-	}
+  private static Stage parseStage(String key, Job job) {
+    return Stage.builder()
+        .name(key)
+        .agent(parseAgentJob(job))
+        .environment(job.getVariables())
+        .steps(parseSteps(job))
+        .when(parseWhen(job))
+        .post(parsePostJob(key, job))
+        .build();
+  }
 
-	private static Options parseOptions(Pipeline pipeline) {
-		if (pipeline.get_default() != null) {
-			final Retry retry = parseRetry(pipeline.get_default());
-			final String timeout = pipeline.get_default().getTimeout();
-			
-			//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-			if (retry == null && timeout == null) {
-				return null;
-			}
-			return Options.builder().timeout(timeout).retry(retry).build();
-		}
-		return null;
-	}
+  private static List<String> parseSteps(Job job) {
+    final List<String> steps = new ArrayList<>();
+    steps.addAll(job.getBeforeScript());
+    steps.addAll(job.getScript());
+    return steps;
+  }
 
-	private static Retry parseRetry(Job job) {
-		if (job.getRetry() != null) {
-			return Retry.builder().maxRetries(job.getRetry().getMaxRetries())
-					// .when(parseWhen(job.getRetry().getWhen()))
-					.build();
-		}
-		return null;
-	}
+  private static Agent parseAgent(Pipeline pipeline) {
+    Agent agent = new Agent();
+    if (pipeline.getImage() != null) {
+      final Docker docker = parseDocker(pipeline.getImage());
+      agent.setDocker(docker);
+    }
+    return agent;
+  }
 
-	public static When parseWhen(Job job) {
-		When when = new When();
-		List<String> expresions = new ArrayList<>();
-		if (job.getOnly() != null) {
-			when.setBranch(job.getOnly().getRefs());	
-			when.setEnvironmentName(job.getOnly().getVariables());										
-		}
-		if(job.getRules() != null && !job.getRules().isEmpty()) {
-			job.getRules().forEach(rule -> {
-				expresions.add(rule.get_if());
-			  });
-			when.setExpression(expresions);
-		}
-		if(job.getExcept()!=null) {
-			when.setNot(job.getExcept().getRefs());		
-		}
-		//TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-		if(when.getBranch()==null && when.getEnvironmentName()== null 
-				&& when.getExpression()== null && when.getNot() == null) {
-			return null;
-		}
-		return when;
-	}
+  private static Agent parseAgentJob(Job job) {
+    Agent agent = new Agent();
+    Docker docker = null;
+    agent.setAgentType(null);
+    if (job.getImage() != null) {
+      docker = parseDocker(job.getImage());
+      agent.setDocker(docker);
+    } else if (job.getTags() != null && !job.getTags().isEmpty()) {
+      agent.setLabel(job.getTags());  //solo en caso de q no sea image
+    }
+    if(agent.getDocker()== null && agent.getAgentType()==null
+        && (agent.getLabel() == null || agent.getLabel().isEmpty())) {
+      return null;
+    }
+    return agent;
+  }
+
+  private static Docker parseDocker(DockerImage image) {
+    return Docker.builder()
+            .image(image.getName())
+            .args(image.getEntryPoint())
+            .build();
+  }
+
+  private static Post parsePostJob(String keyParent, Job job) {
+    List<String> artifacts = new ArrayList<>();
+    List<String> concatenated = new ArrayList<>();
+    Post post = new Post();
+
+    if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {
+      concatenated.addAll(job.getAfterScript());
+    }
+    if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null
+        && !job.getArtifacts().getPaths().isEmpty()) {
+      // TODO: revisar tratamiento de artifact
+      String artifact = ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
+      artifacts.add(artifact);
+      concatenated.addAll(artifacts);
+    }
+    post.setAlways(concatenated);
+
+    if((post.getAlways()==null || post.getAlways().isEmpty()) && (
+        post.getSuccess()==null || post.getSuccess().isEmpty())) {
+      return null;
+    }
+    return post;
+  }
+
+
+  //post a nivel de pipeline
+  private static Post parsePost(Pipeline pipeline) {
+    Post post = new Post();
+    pipeline.getJobs().forEach((key, job) -> {
+      //TODO pendiente de revisión, no hay q preguntar por el .post
+      if(job.getStage()!= null && job.getStage().equals(".post")) {
+        post.setAlways(job.getScript());
+      }
+      //TODO pendiente de revisión, no hay q preguntar por el .failure
+      if(job.getStage()!= null && job.getStage().equals(".failure")) {
+        post.setFailure(job.getScript());
+      }
+    });
+
+    if(post.getAlways()==null) {
+      return null;
+    }
+    return post;
+  }
+
+  private static Options parseOptions(Pipeline pipeline) {
+    if (pipeline.get_default() != null) {
+      final Retry retry = parseRetry(pipeline.get_default());
+      final String timeout = pipeline.get_default().getTimeout();
+
+      //TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
+      if (retry == null && timeout == null) {
+        return null;
+      }
+      return Options.builder().timeout(timeout).retry(retry).build();
+    }
+    return null;
+  }
+
+  private static Retry parseRetry(Job job) {
+    if (job.getRetry() != null) {
+      return Retry.builder().maxRetries(job.getRetry().getMaxRetries())
+          // .when(parseWhen(job.getRetry().getWhen()))
+          .build();
+    }
+    return null;
+  }
+
+  public static When parseWhen(Job job) {
+    When when = new When();
+    List<String> expresions = new ArrayList<>();
+    if (job.getOnly() != null) {
+      when.setBranch(job.getOnly().getRefs());
+      when.setEnvironment(job.getOnly().getVariables());
+    }
+    if(job.getRules() != null && !job.getRules().isEmpty()) {
+      job.getRules().forEach(rule -> {
+        expresions.add(rule.get_if());
+      });
+      when.setExpression(expresions);
+    }
+    if(job.getExcept()!=null) {
+      when.setNot(job.getExcept().getRefs());
+    }
+    //TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
+    if(when.getBranch()==null && when.getEnvironment()== null
+        && when.getExpression()== null && when.getNot() == null) {
+      return null;
+    }
+    return when;
+  }
 
 }
