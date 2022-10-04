@@ -68,7 +68,7 @@ public class Pipeline {
       response += "    post " + post + "\n";
     }
     if(options != null) {
-      response += "    options " + options + "\n";
+      response += "\n  options{\n" + options + "\n }";
     }
     response += "\n}";
 

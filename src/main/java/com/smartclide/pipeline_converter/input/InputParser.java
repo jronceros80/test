@@ -35,7 +35,7 @@ public class InputParser {
     mapper2.setSerializationInclusion(Include.NON_NULL);
     mapper2.setSerializationInclusion(Include.NON_EMPTY);
     try {
-      Pipeline cfg = mapper.readValue(new File("target/classes/test3.yaml"), Pipeline.class);
+      Pipeline cfg = mapper.readValue(new File("target/classes/test10.yaml"), Pipeline.class);
       System.out.println(mapper2.writeValueAsString(cfg));
       //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
       mapper.setSerializationInclusion(Include.NON_NULL);
@@ -161,8 +161,13 @@ public class InputParser {
     }
     post.setAlways(concatenated);
 
+    if(job.getAllowFailure() != null) {
+      post.setFailure(job.getAllowFailure().getAllowFailure());
+    }
+
     if((post.getAlways()==null || post.getAlways().isEmpty()) && (
-        post.getSuccess()==null || post.getSuccess().isEmpty())) {
+        post.getSuccess()==null || post.getSuccess().isEmpty()) &&
+        post.getFailure()==null) {
       return null;
     }
     return post;
@@ -178,9 +183,9 @@ public class InputParser {
         post.setAlways(job.getScript());
       }
       //TODO pendiente de revisión, no hay q preguntar por el .failure
-      if(job.getStage()!= null && job.getStage().equals(".failure")) {
+      /*if(job.getStage()!= null && job.getStage().equals(".failure")) {
         post.setFailure(job.getScript());
-      }
+      }*/
     });
 
     if(post.getAlways()==null) {
@@ -198,15 +203,18 @@ public class InputParser {
       if (retry == null && timeout == null) {
         return null;
       }
-      return Options.builder().timeout(timeout).retry(retry).build();
+      return Options.builder()
+              .timeout(timeout)
+              .retry(retry)
+              .build();
     }
     return null;
   }
 
   private static Retry parseRetry(Job job) {
     if (job.getRetry() != null) {
-      return Retry.builder().maxRetries(job.getRetry().getMaxRetries())
-          // .when(parseWhen(job.getRetry().getWhen()))
+      return Retry.builder()
+              .maxRetries(job.getRetry().getMaxRetries())
           .build();
     }
     return null;

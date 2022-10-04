@@ -20,7 +20,16 @@ public class Options {
   }
 
   private String getResponse() {
-    return "Options [timeout=" + timeout + ", retry=" + retry + "]";
+    String response="";
+    if(timeout!= null && !timeout.isEmpty()){
+      String unit = timeout.substring(timeout.lastIndexOf(" "));
+      String time = timeout.substring(0,timeout.lastIndexOf(" "));;
+      response += "    timeout(time: " + time + ", unit: " + unit + ")";
+    }
+    if(retry!= null){
+      response += "retry(" + retry + ")";
+    }
+    return response;
   }
 
 }

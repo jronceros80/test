@@ -15,13 +15,12 @@ import lombok.Setter;
 public class Post{
   private List<String> success;
   private List<String> always;
-  private List<String> failure;
+  private Boolean failure;
   @Override
   public String toString() {
     final String alwaysFlatten = getAlwaysFlatten();
     final String successFlatten = getSuccessFlatten();
-    final String failureFlatten = getFailureFlatten();
-    return getResponse(alwaysFlatten, successFlatten, failureFlatten);
+    return getResponse(alwaysFlatten, successFlatten);
   }
   private String getSuccessFlatten() {
     String successFlatten = "";
@@ -43,7 +42,7 @@ public class Post{
     return alwaysFlatten;
   }
 
-  private String getFailureFlatten() {
+  /*private String getFailureFlatten() {
     String failureFlatten = "";
     if(this.failure != null && !this.failure.isEmpty()) {
       for (String failure: this.failure) {
@@ -51,9 +50,9 @@ public class Post{
       }
     }
     return failureFlatten;
-  }
+  }*/
 
-  private String getResponse(String alwaysFlatten, String successFlatten, String failureFlatten){
+  private String getResponse(String alwaysFlatten, String successFlatten){
     String response = "";
     if(this.always != null && !this.always.isEmpty()){
       response += "     always{\n      " + alwaysFlatten + "\n     }";
@@ -61,8 +60,8 @@ public class Post{
     if(this.success != null && !this.success.isEmpty()){
       response += "      success{\n     " + successFlatten + "\n  }";
     }
-    if(this.failure != null && !this.failure.isEmpty()){
-      response += "      failure{\n     " + failureFlatten + "\n   }";
+    if(this.failure != null && this.failure.equals(true)){
+      response += "      failure{\n     echo " + "'if this stage fails the pipeline it will run'" + "\n   }";
     }
     return response;
   }
