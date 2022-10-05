@@ -58,6 +58,9 @@ public class Pipeline {
     }else{
       response += "    agent " + AgentType.any + "\n";
     }
+    if(options != null) {
+      response += "    options{\n  " + options + "\n    }\n";
+    }
     if(environment != null && !environment.isEmpty()) {
       response += "    environment{\n" + envFlatten + "    }\n";
     }
@@ -66,9 +69,6 @@ public class Pipeline {
     }
     if(post != null) {
       response += "    post " + post + "\n";
-    }
-    if(options != null) {
-      response += "\n  options{\n" + options + "\n }";
     }
     response += "\n}";
 

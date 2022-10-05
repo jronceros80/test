@@ -35,7 +35,7 @@ public class InputParser {
     mapper2.setSerializationInclusion(Include.NON_NULL);
     mapper2.setSerializationInclusion(Include.NON_EMPTY);
     try {
-      Pipeline cfg = mapper.readValue(new File("target/classes/test10.yaml"), Pipeline.class);
+      Pipeline cfg = mapper.readValue(new File("target/classes/test11.yaml"), Pipeline.class);
       System.out.println(mapper2.writeValueAsString(cfg));
       //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
       mapper.setSerializationInclusion(Include.NON_NULL);
@@ -172,9 +172,6 @@ public class InputParser {
     }
     return post;
   }
-
-
-  //post a nivel de pipeline
   private static Post parsePost(Pipeline pipeline) {
     Post post = new Post();
     pipeline.getJobs().forEach((key, job) -> {
@@ -182,10 +179,6 @@ public class InputParser {
       if(job.getStage()!= null && job.getStage().equals(".post")) {
         post.setAlways(job.getScript());
       }
-      //TODO pendiente de revisión, no hay q preguntar por el .failure
-      /*if(job.getStage()!= null && job.getStage().equals(".failure")) {
-        post.setFailure(job.getScript());
-      }*/
     });
 
     if(post.getAlways()==null) {
@@ -222,23 +215,39 @@ public class InputParser {
 
   public static When parseWhen(Job job) {
     When when = new When();
-    List<String> expresions = new ArrayList<>();
     if (job.getOnly() != null) {
       when.setBranch(job.getOnly().getRefs());
       when.setEnvironment(job.getOnly().getVariables());
     }
     if(job.getRules() != null && !job.getRules().isEmpty()) {
+      List<String> expr = new ArrayList<>();
+      List<String> allOf = new ArrayList<>();
       job.getRules().forEach(rule -> {
-        expresions.add(rule.get_if());
+        // para q sea una expresion no debe contener el simbolo $
+        if(rule.get_if() != null && !rule.get_if().contains("$")){
+          expr.add(rule.get_if());
+        }
+        // las variables de entorno q contienen el $ y estan anidada con el && es porque es un allOf en jenkins
+        if(rule.get_if() != null && rule.get_if().contains("&&")&& rule.get_if().contains("$")){
+          String[] allOfs = Arrays.stream(rule.get_if().split("&&"))
+                            .map(String::trim)
+                            .toArray(String[]::new);
+          List<String> listAllOf = Stream.of(allOfs).map(temp -> temp.substring(temp.indexOf("$")+1)).collect(Collectors.toList());
+          listAllOf.forEach(allOfFound -> allOf.add(allOfFound));
+        }
       });
-      when.setExpression(expresions);
+      when.setExpression(expr);
+      when.setAllOf(allOf);
     }
     if(job.getExcept()!=null) {
       when.setNot(job.getExcept().getRefs());
     }
     //TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-    if(when.getBranch()==null && when.getEnvironment()== null
-        && when.getExpression()== null && when.getNot() == null) {
+    if(when.getBranch()==null
+                  && when.getEnvironment()== null
+                  && when.getExpression()== null
+                  && when.getNot() == null
+                  && when.getAllOf()== null) {
       return null;
     }
     return when;

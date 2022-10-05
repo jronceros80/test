@@ -42,20 +42,10 @@ public class Post{
     return alwaysFlatten;
   }
 
-  /*private String getFailureFlatten() {
-    String failureFlatten = "";
-    if(this.failure != null && !this.failure.isEmpty()) {
-      for (String failure: this.failure) {
-        failureFlatten += " " + failure;
-      }
-    }
-    return failureFlatten;
-  }*/
-
   private String getResponse(String alwaysFlatten, String successFlatten){
     String response = "";
     if(this.always != null && !this.always.isEmpty()){
-      response += "     always{\n      " + alwaysFlatten + "\n     }";
+      response += "     always{\n      " + alwaysFlatten + "     }";
     }
     if(this.success != null && !this.success.isEmpty()){
       response += "      success{\n     " + successFlatten + "\n  }";

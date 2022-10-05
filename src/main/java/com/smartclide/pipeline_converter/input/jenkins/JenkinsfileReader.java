@@ -94,7 +94,7 @@ public class JenkinsfileReader {
     //		System.out.println("        stage('stage one') {".matches(SECTION_OPENING));
     //		System.out.println("        } ".matches(SECTION_CLOSING));
     //		System.out.println(new JenkinsfileParser().parseInput(new File("target/classes/jenkinsfile_4")));
-    Node jenkinsPipeline = new JenkinsfileReader().read(new File("target/classes/jenkinsfile_4"));
+    Node jenkinsPipeline = new JenkinsfileReader().read(new File("target/classes/jenkinsfile_8"));
     System.out.println(jenkinsPipeline);
 
     Pipeline gitlabPipeline = new GitlabCIOutputConverter().convert(jenkinsPipeline);
