@@ -45,7 +45,7 @@ public class Pipeline {
     if(this.environment != null && !this.environment.isEmpty()) {
       for (Iterator<Map.Entry<String, String>> entries = environment.entrySet().iterator(); entries.hasNext(); ) {
         Map.Entry<String, String> entry = entries.next();
-        envFlatten += "       " + entry.getKey()+" = "+entry.getValue() + "\n";
+        envFlatten += "       " + entry.getKey()+" = '"+entry.getValue() + "'\n";
       }
     }
     return envFlatten;

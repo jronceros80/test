@@ -15,7 +15,6 @@ import lombok.Setter;
 public class Post{
   private List<String> success;
   private List<String> always;
-  private Boolean failure;
   @Override
   public String toString() {
     final String alwaysFlatten = getAlwaysFlatten();
@@ -49,9 +48,6 @@ public class Post{
     }
     if(this.success != null && !this.success.isEmpty()){
       response += "      success{\n     " + successFlatten + "\n  }";
-    }
-    if(this.failure != null && this.failure.equals(true)){
-      response += "      failure{\n     echo " + "'if this stage fails the pipeline it will run'" + "\n   }";
     }
     return response;
   }

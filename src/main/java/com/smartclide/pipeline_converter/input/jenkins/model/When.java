@@ -1,6 +1,5 @@
 package com.smartclide.pipeline_converter.input.jenkins.model;
 
-import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,14 +18,14 @@ public class When {
   List<String> environment;
   List<String> branch;
   List<String> allOf;
-  List<String> not;
+  List<String> notAnyOf;
 
   @Override
   public String toString() {
     final String expressionFlatten = getExpressionFlatten();
     final String envFlatten = getEnvironmentFlatten();
     final String branchFlatten = getBranchFlatten();
-    final String notFlatten = getNotFlatten();
+    final String notFlatten = getNotAnyOfFlatten();
     final String allOfFlatten = getAllOfFlatten();
     return getResponse(expressionFlatten, envFlatten, branchFlatten, notFlatten, allOfFlatten);
   }
@@ -35,7 +34,7 @@ public class When {
     String expressionFlatten = "";
     if(this.expression != null && !this.expression.isEmpty()) {
       for (String expression: this.expression) {
-        expressionFlatten += " " + expression ;
+        expressionFlatten += "          " + expression ;
       }
     }
     return expressionFlatten;
@@ -55,54 +54,68 @@ public class When {
     String branchFlatten = "";
     if(this.branch != null && !this.branch.isEmpty()) {
       for (String branch: this.branch) {
-        branchFlatten += " " + branch;
+        branchFlatten += branch;
       }
     }
     return branchFlatten;
   }
 
-  private String getNotFlatten() {
-    String notFlatten = "";
-    if(this.not != null && !this.not.isEmpty()) {
-      for (String not: this.not) {
-        notFlatten += " " + not;
+  private String getNotAnyOfFlatten() {
+    String notAnyOfFlatten = "";
+    String concatenated = "";
+    if(this.notAnyOf != null && !this.notAnyOf.isEmpty()) {
+      for (String nAnyOf: this.notAnyOf) {
+        if(!nAnyOf.contains("CI_COMMIT_BRANCH")){
+          String envName = substractInitial(nAnyOf).trim();
+          String enValue = substractEnd(nAnyOf).trim();
+          concatenated = "        environment name: '" + envName + "', environment value: '" + enValue + "'\n";
+        }else{
+          String branch = substractEnd(nAnyOf);
+          concatenated = "        branch: " + branch + "\n";
+        }
+        notAnyOfFlatten += " " + concatenated;
       }
     }
-    return notFlatten;
+    return notAnyOfFlatten;
   }
-
   private String getAllOfFlatten() {
     String response ="";
     if(this.allOf != null && !this.allOf.isEmpty()) {
       for (String allOf: this.allOf) {
-        String envName = allOf.substring(0,allOf.lastIndexOf("=="));
-        String enValue = allOf.substring(allOf.lastIndexOf("==")+2);
-        String env = "        environment name: " + envName + ", environment value: " + enValue + "\n";
+        String envName = substractInitial(allOf);
+        String enValue = substractEnd(allOf);
+        String env = "       environment name: '" + envName + "', environment value: '" + enValue + "'\n";
         response += "  " + env;
       }
     }
     return response;
+  }
+  private static String substractInitial(String text) {
+    return text.substring(0, text.lastIndexOf("=="));
+  }
+  private static String substractEnd(String text) {
+    return  text.substring(text.lastIndexOf("==")+2);
   }
 
   private String getResponse(String expressionFlatten, String envFlatten,
                              String branchFlatten, String notFlatten, String allOfs) {
     String response = "{\n";
     if(expression != null && !expression.isEmpty()) {
-      response += "         expression{" + expressionFlatten + "} \n";
+      response += "        expression{\n" + expressionFlatten + "\n        } \n";
     }
     if(environment != null && !environment.isEmpty()) {
       response += "        environment{\n" + "    "+ envFlatten + "    }\n";
     }
     if(branch != null && !branch.isEmpty()) {
-      response += "      branch" + branchFlatten + "\n ";
+      response += "        branch '" + branchFlatten + "'\n ";
     }
-    if(not != null && !not.isEmpty()) {
-      response += "     not " + notFlatten + "\n";
+    if(notAnyOf != null && !notAnyOf.isEmpty()) {
+      response += "        not{\n" + notFlatten + "        }\n";
     }
     if(allOf != null && !allOf.isEmpty()) {
       response += "         allOf{ \n " + allOfs + "    }\n";
     }
-    response +="      }";
+    response +="     }";
 
     return response;
   }

@@ -32,7 +32,6 @@ public class Success {
 
   private String getResponse(String artsFlatten) {
     String response = "";
-    //TODO pendiente de revisión
     if(archiveArtifacts != null && !archiveArtifacts.isEmpty()){
       response += "archiveArtifacts artifacts: " + artsFlatten;
     }

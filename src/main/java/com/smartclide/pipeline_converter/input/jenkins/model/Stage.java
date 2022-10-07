@@ -70,7 +70,7 @@ public class Stage {
     if(name != null) {
       response += "stage('" + name + "'){ \n";
     }
-    if(agent != null) {
+    if(agent != null && agent.getAgentType() !=null && !agent.getAgentType().equals(Agent.AgentType.any)) {
       response += "       agent" + agent + "\n";
     }
     if(environment != null && !environment.isEmpty()) {

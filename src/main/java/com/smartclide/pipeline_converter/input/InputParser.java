@@ -13,9 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.smartclide.pipeline_converter.input.gitlab.model.DockerImage;
-import com.smartclide.pipeline_converter.input.gitlab.model.Job;
-import com.smartclide.pipeline_converter.input.gitlab.model.Pipeline;
+import com.smartclide.pipeline_converter.input.gitlab.model.*;
 import com.smartclide.pipeline_converter.input.jenkins.model.Agent;
 import com.smartclide.pipeline_converter.input.jenkins.model.Docker;
 import com.smartclide.pipeline_converter.input.jenkins.model.Options;
@@ -25,8 +23,8 @@ import com.smartclide.pipeline_converter.input.jenkins.model.Stage;
 import com.smartclide.pipeline_converter.input.jenkins.model.When;
 
 public class InputParser {
-  public static final String SUCCESS = "success";
   public static final String ARTIFACT = "archiveArtifacts artifacts:";
+  public static final String BRANCH = "CI_COMMIT_BRANCH";
 
   public static void main(String[] args) {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
@@ -59,9 +57,9 @@ public class InputParser {
     if (gitlabPipeline != null && (gitlabPipeline.getJobs() != null && !gitlabPipeline.getJobs().isEmpty())) {
       jenkinsPipeline.setAgent(parseAgent(gitlabPipeline));
       jenkinsPipeline.setEnvironment(gitlabPipeline.getVariables());
-      jenkinsPipeline.setPost(parsePost(gitlabPipeline));
       jenkinsPipeline.setOptions(parseOptions(gitlabPipeline));
       jenkinsPipeline.setStages(parseStages(gitlabPipeline));
+      jenkinsPipeline.setPost(parsePost(gitlabPipeline));
     }
     return jenkinsPipeline;
   }
@@ -69,18 +67,13 @@ public class InputParser {
   private static List<Stage> parseStages(Pipeline pipeline) {
     var groupedStages = new LinkedHashMap<String, List<Stage>>();
     List<Stage> stages = new ArrayList<>();
-    pipeline.getJobs().forEach((key, job) -> {
-      Stage stage = parseStage(key, job);
-      groupedStages.merge(job.getStage(), Arrays.asList(stage), (current, newVal) -> {
-        return Stream.of(current, newVal)
-            .flatMap(x -> x.stream())
-            .collect(Collectors.toList());
-      }
-          );
-    }
-        );
+    groupedByStage(pipeline, groupedStages);
+    buildStages(groupedStages, stages);
+    return stages;
+  }
 
-    groupedStages.forEach((stage,substages) -> {
+  private static void buildStages(LinkedHashMap<String, List<Stage>> groupedStages, List<Stage> stages) {
+    groupedStages.forEach((stage, substages) -> {
       if(substages.size() > 1) {
         Stage parent = Stage.builder().name(stage).parallel(substages).build();
         stages.add(parent);
@@ -88,9 +81,17 @@ public class InputParser {
         stages.addAll(substages);
       }
     });
+  }
 
-
-    return stages;
+  private static void groupedByStage(Pipeline pipeline, LinkedHashMap<String, List<Stage>> groupedStages) {
+    pipeline.getJobs().forEach((key, job) -> {
+      Stage stage = parseStage(key, job);
+      groupedStages.merge(job.getStage(), Arrays.asList(stage), (current, newVal) -> {
+        return Stream.of(current, newVal)
+            .flatMap(x -> x.stream())
+            .collect(Collectors.toList());
+      });
+    });
   }
 
   private static Stage parseStage(String key, Job job) {
@@ -100,7 +101,7 @@ public class InputParser {
         .environment(job.getVariables())
         .steps(parseSteps(job))
         .when(parseWhen(job))
-        .post(parsePostJob(key, job))
+        .post(parsePostJob(job))
         .build();
   }
 
@@ -122,18 +123,27 @@ public class InputParser {
 
   private static Agent parseAgentJob(Job job) {
     Agent agent = new Agent();
-    Docker docker = null;
-    agent.setAgentType(null);
     if (job.getImage() != null) {
-      docker = parseDocker(job.getImage());
+      Docker docker = parseDocker(job.getImage());
       agent.setDocker(docker);
-    } else if (job.getTags() != null && !job.getTags().isEmpty()) {
-      agent.setLabel(job.getTags());  //solo en caso de q no sea image
+      agent.setAgentType(Agent.AgentType.other);
     }
-    if(agent.getDocker()== null && agent.getAgentType()==null
+    //TODO: pendiente evaluar cuando es una lista de docker images
+    if(job.getServices() != null && !job.getServices().isEmpty()) {
+      List<Docker> service = parseServices(job.getServices());
+      agent.setDocker(service.get(0));
+      agent.setAgentType(Agent.AgentType.other);
+    }
+    if ((job.getServices() == null || job.getServices().isEmpty()) && job.getImage()== null
+            && job.getTags() != null && !job.getTags().isEmpty()) {
+      agent.setLabel(job.getTags());
+      agent.setAgentType(Agent.AgentType.other);
+    }
+    if(agent.getDocker()== null && job.getServices() == null && agent.getAgentType()==null
         && (agent.getLabel() == null || agent.getLabel().isEmpty())) {
       return null;
     }
+
     return agent;
   }
 
@@ -144,43 +154,50 @@ public class InputParser {
             .build();
   }
 
-  private static Post parsePostJob(String keyParent, Job job) {
-    List<String> artifacts = new ArrayList<>();
+  private static List<Docker> parseServices(List<DockerImage> images) {
+    List<Docker> dockerImages = new ArrayList<>();
+    images.forEach(docImages -> {
+      Docker docker = new Docker();
+      docker.setImage(docImages.getName());
+      docker.setArgs(docImages.getEntryPoint());
+      dockerImages.add(docker);
+    });
+    return dockerImages;
+  }
+
+  private static Post parsePostJob(Job job) {
     List<String> concatenated = new ArrayList<>();
     Post post = new Post();
+    buildContentPost(job, concatenated, post);
+    if((post.getAlways()==null || post.getAlways().isEmpty()) && (
+        post.getSuccess()==null || post.getSuccess().isEmpty())) {
+      return null;
+    }
+    return post;
+  }
 
+  private static void buildContentPost(Job job, List<String> concatenated, Post post) {
     if(job.getAfterScript() != null && !job.getAfterScript().isEmpty()) {
       concatenated.addAll(job.getAfterScript());
     }
     if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null
         && !job.getArtifacts().getPaths().isEmpty()) {
-      // TODO: revisar tratamiento de artifact
+      List<String> artifacts = new ArrayList<>();
       String artifact = ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
       artifacts.add(artifact);
       concatenated.addAll(artifacts);
     }
     post.setAlways(concatenated);
-
-    if(job.getAllowFailure() != null) {
-      post.setFailure(job.getAllowFailure().getAllowFailure());
-    }
-
-    if((post.getAlways()==null || post.getAlways().isEmpty()) && (
-        post.getSuccess()==null || post.getSuccess().isEmpty()) &&
-        post.getFailure()==null) {
-      return null;
-    }
-    return post;
   }
+
   private static Post parsePost(Pipeline pipeline) {
     Post post = new Post();
-    pipeline.getJobs().forEach((key, job) -> {
-      //TODO pendiente de revisión, no hay q preguntar por el .post
-      if(job.getStage()!= null && job.getStage().equals(".post")) {
-        post.setAlways(job.getScript());
+    if(pipeline.get_default() != null ){
+      List<String> afterScript = pipeline.get_default().getAfterScript();
+      if(afterScript!= null && !afterScript.isEmpty()){
+        post.setAlways(afterScript);
       }
-    });
-
+    }
     if(post.getAlways()==null) {
       return null;
     }
@@ -192,7 +209,6 @@ public class InputParser {
       final Retry retry = parseRetry(pipeline.get_default());
       final String timeout = pipeline.get_default().getTimeout();
 
-      //TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
       if (retry == null && timeout == null) {
         return null;
       }
@@ -215,6 +231,16 @@ public class InputParser {
 
   public static When parseWhen(Job job) {
     When when = new When();
+    buildWhen(job, when);
+    if(when.getBranch()==null && when.getEnvironment()== null
+            && when.getExpression()== null && when.getNotAnyOf() == null
+                  && when.getAllOf()== null) {
+      return null;
+    }
+    return when;
+  }
+
+  private static void buildWhen(Job job, When when) {
     if (job.getOnly() != null) {
       when.setBranch(job.getOnly().getRefs());
       when.setEnvironment(job.getOnly().getVariables());
@@ -222,35 +248,64 @@ public class InputParser {
     if(job.getRules() != null && !job.getRules().isEmpty()) {
       List<String> expr = new ArrayList<>();
       List<String> allOf = new ArrayList<>();
-      job.getRules().forEach(rule -> {
-        // para q sea una expresion no debe contener el simbolo $
-        if(rule.get_if() != null && !rule.get_if().contains("$")){
-          expr.add(rule.get_if());
-        }
-        // las variables de entorno q contienen el $ y estan anidada con el && es porque es un allOf en jenkins
-        if(rule.get_if() != null && rule.get_if().contains("&&")&& rule.get_if().contains("$")){
-          String[] allOfs = Arrays.stream(rule.get_if().split("&&"))
-                            .map(String::trim)
-                            .toArray(String[]::new);
-          List<String> listAllOf = Stream.of(allOfs).map(temp -> temp.substring(temp.indexOf("$")+1)).collect(Collectors.toList());
-          listAllOf.forEach(allOfFound -> allOf.add(allOfFound));
-        }
-      });
+      List<String> notAnyOf = new ArrayList<>();
+
+      buildContentWhen(job, expr, allOf, notAnyOf);
+
       when.setExpression(expr);
       when.setAllOf(allOf);
+      when.setNotAnyOf(notAnyOf);
     }
-    if(job.getExcept()!=null) {
-      when.setNot(job.getExcept().getRefs());
-    }
-    //TODO: esto es para no mostrar en la respuesta los objetos con todos sus atributos a null
-    if(when.getBranch()==null
-                  && when.getEnvironment()== null
-                  && when.getExpression()== null
-                  && when.getNot() == null
-                  && when.getAllOf()== null) {
-      return null;
-    }
-    return when;
   }
 
+  private static void buildContentWhen(Job job, List<String> expr, List<String> allOf, List<String> notAnyOf) {
+    job.getRules().forEach(rule -> {
+      createExpression(expr, rule);
+      createAllOf(allOf, rule);
+      createNotAnyOf(notAnyOf, rule);
+    });
+  }
+
+  private static void createExpression(List<String> expr, Rule rule) {
+    if(rule.get_if() != null && !rule.get_if().contains("$")){
+      expr.add(rule.get_if());
+    }
+  }
+
+  private static void createAllOf(List<String> allOf, Rule rule) {
+    if(rule.get_if() != null && rule.get_if().contains("&&")
+            && rule.get_if().contains("$")){
+
+      final String[] allOfs = Arrays.stream(rule.get_if().split("&&"))
+                        .map(String::trim)
+                        .toArray(String[]::new);
+
+      final List<String> listAllOf = Stream.of(allOfs)
+              .map(alOf -> alOf.substring(alOf.indexOf("$")+1))
+              .collect(Collectors.toList());
+
+      listAllOf.forEach(allOfFound -> allOf.add(allOfFound));
+    }
+  }
+
+  private static void createNotAnyOf(List<String> listNotAnyOf, Rule rule) {
+    if(rule.get_if() != null && rule.get_if().contains("$") && rule.get_if().contains(BRANCH)){
+      if(rule.getWhen() != null && rule.getWhen().equals(RunConditions.never)){
+        List<String> listBranch = deleteDollar(rule);
+        listBranch.forEach(branch -> listNotAnyOf.add(branch));
+      }
+    }else if (rule.get_if() != null && rule.get_if().contains("$")){
+      if(rule.getWhen() != null && rule.getWhen().equals(RunConditions.never)){
+        List<String> listEnv = deleteDollar(rule);
+        listEnv.forEach(env -> listNotAnyOf.add(env));
+      }
+    }
+  }
+
+  private static List<String> deleteDollar(Rule rule) {
+    final List<String> branch = Stream.of(rule.get_if())
+            .map(nAniOf -> nAniOf.substring(nAniOf.indexOf("$")+1))
+            .collect(Collectors.toList());
+    return branch;
+  }
 }

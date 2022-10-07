@@ -22,7 +22,6 @@ public class Retry {
   }
 
   private String getResponse() {
-    //TODO pendiente de revisión
     String response = "retry(";
     if(maxRetries != null && !maxRetries.isEmpty()){
       response += maxRetries + ")";
