@@ -1,6 +1,8 @@
 package com.smartclide.pipeline_converter.input.jenkins.model;
 
 import java.util.List;
+
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,20 +27,9 @@ public class Agent {
 
   @Override
   public String toString() {
-    final String labelFlatten = getLabelFlatten();
+    final String labelFlatten = Util.getListFlatten(label, "agent");
     return getResponse(labelFlatten);
   }
-
-  private String getLabelFlatten() {
-    String labelFlatten = "";
-    if(this.label != null && !this.label.isEmpty()) {
-      for (String label: this.label) {
-        labelFlatten += " " + label;
-      }
-    }
-    return labelFlatten;
-  }
-
   private String getResponse(String labelFlatten) {
     String response = "";
     if(label != null && !label.isEmpty()){

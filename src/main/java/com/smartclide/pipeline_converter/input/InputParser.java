@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.smartclide.pipeline_converter.input.gitlab.model.*;
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import com.smartclide.pipeline_converter.input.jenkins.model.Agent;
 import com.smartclide.pipeline_converter.input.jenkins.model.Docker;
 import com.smartclide.pipeline_converter.input.jenkins.model.Options;
@@ -21,11 +22,9 @@ import com.smartclide.pipeline_converter.input.jenkins.model.Post;
 import com.smartclide.pipeline_converter.input.jenkins.model.Retry;
 import com.smartclide.pipeline_converter.input.jenkins.model.Stage;
 import com.smartclide.pipeline_converter.input.jenkins.model.When;
+import org.springframework.util.ResourceUtils;
 
 public class InputParser {
-  public static final String ARTIFACT = "archiveArtifacts artifacts:";
-  public static final String BRANCH = "CI_COMMIT_BRANCH";
-
   public static void main(String[] args) {
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.MINIMIZE_QUOTES));
     ObjectMapper mapper2 = new ObjectMapper();
@@ -33,7 +32,8 @@ public class InputParser {
     mapper2.setSerializationInclusion(Include.NON_NULL);
     mapper2.setSerializationInclusion(Include.NON_EMPTY);
     try {
-      Pipeline cfg = mapper.readValue(new File("target/classes/test11.yaml"), Pipeline.class);
+      File file = ResourceUtils.getFile("classpath:test11.yaml");
+      Pipeline cfg = mapper.readValue(file, Pipeline.class);
       System.out.println(mapper2.writeValueAsString(cfg));
       //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
       mapper.setSerializationInclusion(Include.NON_NULL);
@@ -140,10 +140,9 @@ public class InputParser {
       agent.setAgentType(Agent.AgentType.other);
     }
     if(agent.getDocker()== null && job.getServices() == null && agent.getAgentType()==null
-        && (agent.getLabel() == null || agent.getLabel().isEmpty())) {
+            && (agent.getLabel() == null || agent.getLabel().isEmpty())) {
       return null;
     }
-
     return agent;
   }
 
@@ -183,7 +182,7 @@ public class InputParser {
     if(job.getArtifacts() != null && job.getArtifacts().getPaths() != null
         && !job.getArtifacts().getPaths().isEmpty()) {
       List<String> artifacts = new ArrayList<>();
-      String artifact = ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
+      String artifact = Util.ARTIFACT.concat(job.getArtifacts().getPaths().get(0));
       artifacts.add(artifact);
       concatenated.addAll(artifacts);
     }
@@ -249,9 +248,7 @@ public class InputParser {
       List<String> expr = new ArrayList<>();
       List<String> allOf = new ArrayList<>();
       List<String> notAnyOf = new ArrayList<>();
-
       buildContentWhen(job, expr, allOf, notAnyOf);
-
       when.setExpression(expr);
       when.setAllOf(allOf);
       when.setNotAnyOf(notAnyOf);
@@ -289,7 +286,7 @@ public class InputParser {
   }
 
   private static void createNotAnyOf(List<String> listNotAnyOf, Rule rule) {
-    if(rule.get_if() != null && rule.get_if().contains("$") && rule.get_if().contains(BRANCH)){
+    if(rule.get_if() != null && rule.get_if().contains("$") && rule.get_if().contains(Util.BRANCH)){
       if(rule.getWhen() != null && rule.getWhen().equals(RunConditions.never)){
         List<String> listBranch = deleteDollar(rule);
         listBranch.forEach(branch -> listNotAnyOf.add(branch));

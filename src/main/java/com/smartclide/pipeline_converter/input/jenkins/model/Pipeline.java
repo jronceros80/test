@@ -3,6 +3,8 @@ package com.smartclide.pipeline_converter.input.jenkins.model;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import com.smartclide.pipeline_converter.input.jenkins.model.Agent.AgentType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,32 +27,10 @@ public class Pipeline {
   @Override
   public String toString() {
     final Docker docker = agent.getDocker();
-    final String stageFlatten = getStagesFlatten();
-    final String envFlatten = getEnvFlatten();
+    final String stageFlatten = Util.getStagesFlatten(stages,"pipeline");
+    final String envFlatten = Util.getMapFlatten(environment, "pipeline");
     return getResponse(stageFlatten, docker, envFlatten);
   }
-
-  private String getStagesFlatten() {
-    String stageFlatten = "";
-    if(this.stages != null && !this.stages.isEmpty()) {
-      for (Stage stage: this.stages) {
-        stageFlatten += "    " + stage + "\n ";
-      }
-    }
-    return stageFlatten;
-  }
-
-  private String getEnvFlatten() {
-    String envFlatten = "";
-    if(this.environment != null && !this.environment.isEmpty()) {
-      for (Iterator<Map.Entry<String, String>> entries = environment.entrySet().iterator(); entries.hasNext(); ) {
-        Map.Entry<String, String> entry = entries.next();
-        envFlatten += "       " + entry.getKey()+" = '"+entry.getValue() + "'\n";
-      }
-    }
-    return envFlatten;
-  }
-
   private String getResponse(String stageFlatten, Docker docker, String envFlatten) {
     String response = "pipeline{\n";
     if(agent != null && docker != null) {

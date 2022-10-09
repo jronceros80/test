@@ -1,6 +1,8 @@
 package com.smartclide.pipeline_converter.input.jenkins.model;
 
 import java.util.List;
+
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,24 +18,13 @@ public class Success {
   private List<String> archiveArtifacts;
   @Override
   public String toString() {
-    final String artsFlatten = getArtifactFlatten();
+    final String artsFlatten = Util.getListFlatten(archiveArtifacts, "artifact");
     return getResponse(artsFlatten);
   }
-
-  private String getArtifactFlatten() {
-    String artsFlatten = "";
-    if(this.archiveArtifacts != null &&  !this.archiveArtifacts.isEmpty()) {
-      for (String artifact: this.archiveArtifacts) {
-        artsFlatten += " " + artifact;
-      }
-    }
-    return artsFlatten;
-  }
-
   private String getResponse(String artsFlatten) {
     String response = "";
     if(archiveArtifacts != null && !archiveArtifacts.isEmpty()){
-      response += "archiveArtifacts artifacts: " + artsFlatten;
+      response += Util.ARTIFACT + artsFlatten;
     }
     return response;
   }

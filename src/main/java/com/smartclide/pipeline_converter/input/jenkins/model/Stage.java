@@ -3,6 +3,8 @@ package com.smartclide.pipeline_converter.input.jenkins.model;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,42 +31,11 @@ public class Stage {
 
   @Override
   public String toString() {
-    final String stepsFlatten = getStepsFlatten();
-    final String envFlatten = getEnvFlatten();
-    final String parallelFlatten = getParallelFlatten();
+    final String stepsFlatten = Util.getListFlatten(steps, "steps");
+    final String envFlatten = Util.getMapFlatten(environment, "stage");
+    final String parallelFlatten = Util.getStagesFlatten(parallel, "parallel");
     return getResponse(stepsFlatten, envFlatten, parallelFlatten);
   }
-  private String getParallelFlatten() {
-    String parallelFlatten = "";
-    if(this.parallel != null && !this.parallel.isEmpty()) {
-      for (Stage stage : this.parallel) {
-        parallelFlatten += "      " + stage + "\n ";
-      }
-    }
-    return parallelFlatten;
-  }
-
-  private String getStepsFlatten() {
-    String stepsFlatten = "";
-    if(this.steps != null && !this.steps.isEmpty()) {
-      for (String step: this.steps) {
-        stepsFlatten += "    " + step + "\n     ";
-      }
-    }
-    return stepsFlatten;
-  }
-
-  private String getEnvFlatten() {
-    String envFlatten = "";
-    if(this.environment != null && !this.environment.isEmpty()) {
-      for (Iterator<Map.Entry<String, String>> entries = environment.entrySet().iterator(); entries.hasNext(); ) {
-        Map.Entry<String, String> entry = entries.next();
-        envFlatten += "       " + entry.getKey()+" = "+entry.getValue() + "\n";
-      }
-    }
-    return envFlatten;
-  }
-
   private String getResponse(String stepsFlatten, String envFlatten, String parallelFlatten) {
     String response = "";
     if(name != null) {

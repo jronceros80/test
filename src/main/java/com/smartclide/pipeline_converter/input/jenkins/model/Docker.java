@@ -1,6 +1,8 @@
 package com.smartclide.pipeline_converter.input.jenkins.model;
 
 import java.util.List;
+
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,20 +19,9 @@ public class Docker {
   private List<String> args;
   @Override
   public String toString() {
-    final String argsFlatten = getArgsFlatten();
+    final String argsFlatten = Util.getListFlatten(args, "docker");
     return getResponse(argsFlatten);
   }
-
-  private String getArgsFlatten() {
-    String argsFlatten = "";
-    if(this.args != null && !this.args.isEmpty()) {
-      for (String arg: this.args) {
-        argsFlatten += " " + arg + "\n ";
-      }
-    }
-    return argsFlatten;
-  }
-
   private String getResponse(String argsFlatten) {
     String response = "docker{\n";
     if(image!= null && !image.isEmpty()){

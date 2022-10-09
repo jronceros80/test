@@ -1,5 +1,6 @@
 package com.smartclide.pipeline_converter.input.jenkins.model;
 
+import com.smartclide.pipeline_converter.input.jenkins.common.Util;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,8 +23,8 @@ public class Options {
   private String getResponse() {
     String response="";
     if(timeout!= null && !timeout.isEmpty()){
-      String unit = timeout.substring(timeout.lastIndexOf(" "));
-      String time = timeout.substring(0,timeout.lastIndexOf(" "));;
+      String unit = Util.filterEnded(timeout, Util.SEPARATOR_BLANK);
+      String time = Util.filterInitial(timeout, Util.SEPARATOR_BLANK);
       response += "    timeout(time: " + time + ", unit: " + unit + ")";
     }
     if(retry!= null){
