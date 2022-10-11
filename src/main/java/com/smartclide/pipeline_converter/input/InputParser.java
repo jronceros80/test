@@ -32,7 +32,7 @@ public class InputParser {
     mapper2.setSerializationInclusion(Include.NON_NULL);
     mapper2.setSerializationInclusion(Include.NON_EMPTY);
     try {
-      File file = ResourceUtils.getFile("classpath:test11.yaml");
+      File file = ResourceUtils.getFile("classpath:test.yaml");
       Pipeline cfg = mapper.readValue(file, Pipeline.class);
       System.out.println(mapper2.writeValueAsString(cfg));
       //            cfg.getJobs().values().forEach(v -> {System.out.println(v.getClass());});
