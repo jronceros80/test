@@ -1,6 +1,7 @@
 package com.smartclide.pipeline_converter.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -64,8 +65,7 @@ public class PipelineDescriptorConversionServiceTest {
 		when(reader.read(any(InputStream.class))).thenReturn(node);
 		when(converterGitLab.convert(node)).thenReturn(pipeline);	
 		
-		Resource actual = service.convertFileToGitLab(jenkinsFile);
-		
+		Resource actual = service.convertFileToGitLab(jenkinsFile);		
 		assertNotNull(actual);
 		
 		verify(reader).read(any(InputStream.class));		
@@ -73,6 +73,22 @@ public class PipelineDescriptorConversionServiceTest {
 		verifyNoMoreInteractions(reader);
 		verifyNoMoreInteractions(converterJenkins);
 		
+	}
+	
+	@Test
+	public void convertFileToGitLabTest_Error() throws Exception{	
+		File file = ResourceUtils.getFile("classpath:jenkinsfile_1");
+		String content = Files.readString(Paths.get(file.getPath()));
+				
+		MockMultipartFile jenkinsFile = new MockMultipartFile("test", "jenkinsfile_1", 
+												MediaType.MULTIPART_FORM_DATA_VALUE, content.getBytes());
+		
+		when(reader.read(any(InputStream.class))).thenReturn(null);
+		Resource actual = service.convertFileToGitLab(jenkinsFile);		
+		assertNull(actual);
+		
+		verify(reader).read(any(InputStream.class));				
+		verifyNoMoreInteractions(reader);				
 	}
 	
 	@Test
@@ -85,17 +101,27 @@ public class PipelineDescriptorConversionServiceTest {
 			    
 	    com.smartclide.pipeline_converter.input.jenkins.model.Pipeline jenkins = MockJenkins.createJenkinsMock();
 	    	    
-	    when(converterJenkins.convert(any())).thenReturn(jenkins);
-	    
-	    Resource actual = service.convertFileToJenkins(jenkinsFile);	   
-	    	    
+	    when(converterJenkins.convert(any())).thenReturn(jenkins);	    
+	    Resource actual = service.convertFileToJenkins(jenkinsFile);	   	    	    
 	    assertNotNull(actual);
 	    
 	    verify(converterJenkins).convert(any());		
 		verifyNoMoreInteractions(converterJenkins);
 	}
 	
-	//TODO: falta crear casos de uso cuando se produce un error
-	
-	
+	@Test
+	public void convertFileToJenkinsTest_Error() throws Exception{	
+		File file = ResourceUtils.getFile("classpath:test.yaml");
+		String content = Files.readString(Paths.get(file.getPath()));
+				
+		MockMultipartFile jenkinsFile = new MockMultipartFile("test", "test.yaml", 
+												MediaType.MULTIPART_FORM_DATA_VALUE, content.getBytes());
+			    	    	    	   
+	    when(converterJenkins.convert(any())).thenReturn(null);	    
+	    Resource actual = service.convertFileToJenkins(jenkinsFile);	   	    	    
+	    assertNull(actual);
+	    
+	    verify(converterJenkins).convert(any());		
+		verifyNoMoreInteractions(converterJenkins);
+	}			
 }

@@ -11,7 +11,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonWriteFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -33,25 +32,24 @@ public class PipelineDescriptorConversionService {
 	
 	ObjectMapper mapper;
 
-	public Resource convertFileToGitLab(MultipartFile file){
-        mapper = new ObjectMapper(new YAMLFactory()
+	public Resource convertFileToGitLab(MultipartFile file){                       
+    	mapper = new ObjectMapper(new YAMLFactory()
         		.enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-        		.enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR));
-        
+        		.enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR));        
         mapper.disable(JsonWriteFeature.QUOTE_FIELD_NAMES.mappedFeature());
         mapper.setSerializationInclusion(Include.NON_NULL)
         	.setSerializationInclusion(Include.NON_EMPTY)
-        	.setSerializationInclusion(Include.NON_DEFAULT);
+        	.setSerializationInclusion(Include.NON_DEFAULT);                     
         try {        	
         	Node node = reader.read(file.getInputStream());
     		Pipeline gitlabPipeline = converterGitLab.convert(node);
-    		String converted = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(gitlabPipeline);
-    		return new ByteArrayResource(converted.getBytes());
-		} catch (JsonProcessingException e) {			
+    		if(gitlabPipeline != null) {
+    			String converted = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(gitlabPipeline);
+        		return new ByteArrayResource(converted.getBytes());
+    		}        		
+		} catch (Exception e) {
 			log.debug("Formated file Jenkins incorrect [{}]", file.getOriginalFilename());
-		} catch (IOException e) {
-			log.debug("Formated file Jenkins corrupt [{}]", file.getOriginalFilename());
-		}      
+		}	                    
         return null;
 	}
 
@@ -63,13 +61,11 @@ public class PipelineDescriptorConversionService {
 				.setSerializationInclusion(Include.NON_DEFAULT);
 		try {
 			File file = convertToFile(multipartFile);
-			Pipeline cfg = mapper.readValue(file, Pipeline.class);
-			com.smartclide.pipeline_converter.input.jenkins.model.Pipeline jenkinsPipeline = converterJenkins.convert(cfg);		
+			Pipeline gitlabPipeline = mapper.readValue(file, Pipeline.class);
+			com.smartclide.pipeline_converter.input.jenkins.model.Pipeline jenkinsPipeline = converterJenkins.convert(gitlabPipeline);		
 			return new ByteArrayResource(jenkinsPipeline.toString().getBytes());
-		} catch (JsonProcessingException e) {			
+		} catch (Exception e) {			
 			log.debug("Formated file GitLab incorrect [{}]", multipartFile.getOriginalFilename());
-		} catch (IOException e) {			
-			log.debug("Formated file GitLab corrupt [{}]", multipartFile.getOriginalFilename());
 		} 
 		return null;
 	}

@@ -33,7 +33,7 @@ public class PipelineConverterController {
 	@ApiResponses(value = {
 	        @ApiResponse(responseCode = "200", description = "File parsing to gitlab Ok",content = {
 	                @Content(mediaType = "application/octet-stream", schema = @Schema(implementation = Resource.class)) }),
-	        @ApiResponse(responseCode = "404", description = "Format Jenkins file is incorrect", content = @Content)
+	        @ApiResponse(responseCode = "400", description = "Format Jenkins file is incorrect", content = @Content)
 	})
     public ResponseEntity<Resource> parseFileToGitLab(
     		@RequestParam(value = "file", required = true) MultipartFile file){				
@@ -53,7 +53,7 @@ public class PipelineConverterController {
 	@ApiResponses(value = {
 	        @ApiResponse(responseCode = "200", description = "File parsing to jenkins Ok",content = {
 	                @Content(mediaType = "application/octet-stream", schema = @Schema(implementation = Resource.class)) }),
-	        @ApiResponse(responseCode = "404", description = "Format GitLab file is incorrect", content = @Content)
+	        @ApiResponse(responseCode = "400", description = "Format GitLab file is incorrect", content = @Content)
 	})
 	public ResponseEntity<Resource> parseFileToJenkins(
 			@RequestParam(value = "file", required = true) MultipartFile file){		
