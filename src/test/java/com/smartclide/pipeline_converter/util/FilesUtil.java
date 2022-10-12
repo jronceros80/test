@@ -13,7 +13,7 @@ public class FilesUtil {
 
   private static final Logger logger = LogManager.getLogger(FilesUtil.class);
 
-  static final String ROOT_PATH = "/home/jorge/Documentos/files/";
+  static final String ROOT_PATH = "/tmp/files/";
 
   public static void createTempRepository(String folderToCreate, String nameFile) throws IOException {
     if (Files.notExists(Paths.get(folderToCreate))) {

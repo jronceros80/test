@@ -64,7 +64,7 @@ public class PipelineDescriptorConversionServiceTest {
 		when(reader.read(any(InputStream.class))).thenReturn(node);
 		when(converterGitLab.convert(node)).thenReturn(pipeline);	
 		
-		Resource actual = service.convertFileToGitLab(jenkinsFile.getInputStream());
+		Resource actual = service.convertFileToGitLab(jenkinsFile);
 		
 		assertNotNull(actual);
 		
@@ -94,6 +94,8 @@ public class PipelineDescriptorConversionServiceTest {
 	    verify(converterJenkins).convert(any());		
 		verifyNoMoreInteractions(converterJenkins);
 	}
+	
+	//TODO: falta crear casos de uso cuando se produce un error
 	
 	
 }

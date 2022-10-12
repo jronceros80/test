@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockPart;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+
 import com.smartclide.pipeline_converter.service.PipelineDescriptorConversionService;
 import com.smartclide.pipeline_converter.util.FilesUtil;
 
@@ -36,6 +38,9 @@ public class PipelineConverterControllerTest {
 		
 	@Mock
 	private PipelineDescriptorConversionService service;
+	
+	@InjectMocks
+	private PipelineDescriptorConversionService service1;
 	
 	private static final String PATH_FOLDER = "/tmp/files/";
 	private static final String FILE_NAME_GITLAB = "test.yaml";
@@ -71,7 +76,7 @@ public class PipelineConverterControllerTest {
 	    when(service.convertFileToGitLab(any())).thenReturn(resource);
 	    
 	    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
-	    		.multipart("/gitlabs")
+	    		.multipart("/api/v1/pipeline/gitlab")
 	    		.part(filePart);
 	    	    	   
 	    mvc.perform(builder).andExpect(status().isOk());
@@ -79,8 +84,25 @@ public class PipelineConverterControllerTest {
 	    verify(service, times(1)).convertFileToGitLab(any());
 	    verifyNoMoreInteractions(service);
 	}
+		
 	
-	
+	@Test
+	public void parseFileToGitLab_BAD_REQUEST() throws Exception {			    
+	    byte[] fileContent = "content-jenkins".getBytes(StandardCharsets.UTF_8);
+	    MockPart filePart = new MockPart("file", "orig", fileContent);	    
+	    assertNotNull(filePart);
+	    
+	    when(service.convertFileToGitLab(any())).thenReturn(null);
+	    
+	    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
+	    		.multipart("/api/v1/pipeline/gitlab")
+	    		.part(filePart);
+	    	    	   
+	    mvc.perform(builder).andExpect(status().isBadRequest());
+	    
+	    verify(service, times(1)).convertFileToGitLab(any());
+	    verifyNoMoreInteractions(service);
+	}
 	
 	@Test
 	public void parseFileToJenkinsTest_Ok() throws Exception {	
@@ -94,10 +116,28 @@ public class PipelineConverterControllerTest {
 	    when(service.convertFileToJenkins(any())).thenReturn(resource);
 	    
 	    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
-	    		.multipart("/jenkins")
+	    		.multipart("/api/v1/pipeline/jenkins")
 	    		.part(filePart);
 	    	    	   
 	    mvc.perform(builder).andExpect(status().isOk());
+	    
+	    verify(service, times(1)).convertFileToJenkins(any());
+	    verifyNoMoreInteractions(service);
+	}
+	
+	@Test
+	public void parseFileToJenkins_BAD_REQUEST() throws Exception {			    		
+	    byte[] fileContent = "content-gitlab".getBytes(StandardCharsets.UTF_8);
+	    MockPart filePart = new MockPart("file", "orig", fileContent);	    
+	    assertNotNull(filePart);
+	    
+	    when(service.convertFileToJenkins(any())).thenReturn(null);
+	    
+	    MockHttpServletRequestBuilder builder = MockMvcRequestBuilders
+	    		.multipart("/api/v1/pipeline/jenkins")
+	    		.part(filePart);
+	    	    	   
+	    mvc.perform(builder).andExpect(status().isBadRequest());
 	    
 	    verify(service, times(1)).convertFileToJenkins(any());
 	    verifyNoMoreInteractions(service);

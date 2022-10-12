@@ -5,17 +5,21 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.smartclide.pipeline_converter.service.PipelineDescriptorConversionService;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
 
 @RequiredArgsConstructor
 @RestController
@@ -23,34 +27,43 @@ import lombok.RequiredArgsConstructor;
 public class PipelineConverterController {
 		
 	private final PipelineDescriptorConversionService conversionService;
-	
-	@CrossOrigin("*")
-	@PostMapping("/gitlab")
-    public ResponseEntity<Resource> uploadFile(
-			@RequestParam("file") MultipartFile file) {
-		try {
-			Resource converted = conversionService.convertFileToGitLab(file.getInputStream());
+		
+	@PostMapping(value="/gitlab",  consumes = MediaType.MULTIPART_FORM_DATA_VALUE)	
+	@Operation(summary = "Create file GitLab from source Jenkins")	
+	@ApiResponses(value = {
+	        @ApiResponse(responseCode = "200", description = "File parsing to gitlab Ok",content = {
+	                @Content(mediaType = "application/octet-stream", schema = @Schema(implementation = Resource.class)) }),
+	        @ApiResponse(responseCode = "404", description = "Format Jenkins file is incorrect", content = @Content)
+	})
+    public ResponseEntity<Resource> parseFileToGitLab(
+    		@RequestParam(value = "file", required = true) MultipartFile file){				
+		Resource converted = conversionService.convertFileToGitLab(file);
+		if(converted != null) {
 			return ResponseEntity.ok()
 			        .contentType(MediaType.parseMediaType("application/octet-stream"))
-			        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + converted.getFilename() + "\"")
+			        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getOriginalFilename() + "\"")
 			        .body(converted);
-		} catch (Exception e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "There was a problem while converting: ", e);
 		}
+		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		
 	}
-
-	@CrossOrigin("*")
-	@PostMapping("/jenkins")
+		
+	@PostMapping(value="/jenkins", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)	
+	@Operation(summary = "Create file Jenkins from source GitLab")	
+	@ApiResponses(value = {
+	        @ApiResponse(responseCode = "200", description = "File parsing to jenkins Ok",content = {
+	                @Content(mediaType = "application/octet-stream", schema = @Schema(implementation = Resource.class)) }),
+	        @ApiResponse(responseCode = "404", description = "Format GitLab file is incorrect", content = @Content)
+	})
 	public ResponseEntity<Resource> parseFileToJenkins(
-			@RequestParam("file") MultipartFile file) {
-		try {
+			@RequestParam(value = "file", required = true) MultipartFile file){		
 			Resource converted = conversionService.convertFileToJenkins(file);
+		if(converted != null) {
 			return ResponseEntity.ok()
 					.contentType(MediaType.parseMediaType("application/octet-stream"))
-					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + converted.getFilename() + "\"")
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getOriginalFilename() + "\"")
 					.body(converted);
-		} catch (Exception e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "There was a problem while converting: ", e);
 		}
+		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);		
 	}
 }
